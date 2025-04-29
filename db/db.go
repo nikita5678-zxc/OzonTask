@@ -1,7 +1,7 @@
 package db
 
 import (
-	"OzonTask/models"
+	"OzonTask/graph/model"
 	"context"
 	"github.com/jackc/pgx/v4"
 	"github.com/joho/godotenv"
@@ -29,7 +29,7 @@ func ConnectDB() (*pgx.Conn, error) {
 	return conn, nil
 }
 
-func GetPosts(conn *pgx.Conn) ([]models.Post, error) {
+func GetPosts(conn *pgx.Conn) ([]model.Post, error) {
 	rows, err := conn.Query(context.Background(), "SELECT id, title, content, author, allow_comments FROM posts")
 	if err != nil {
 		log.Println("Error querying posts:", err)
@@ -37,9 +37,9 @@ func GetPosts(conn *pgx.Conn) ([]models.Post, error) {
 	}
 	defer rows.Close()
 
-	var posts []models.Post
+	var posts []model.Post
 	for rows.Next() {
-		var post models.Post
+		var post model.Post
 		err := rows.Scan(&post.ID, &post.Title, &post.Content, &post.Author, &post.AllowComments)
 		if err != nil {
 			log.Println("Error scanning row:", err)
@@ -54,8 +54,8 @@ func GetPosts(conn *pgx.Conn) ([]models.Post, error) {
 	return posts, nil
 }
 
-func CreatePost(conn *pgx.Conn, title, content, author string, allowComments bool) (models.Post, error) {
-	var post models.Post
+func CreatePost(conn *pgx.Conn, title, content, author string, allowComments bool) (model.Post, error) {
+	var post model.Post
 	err := conn.QueryRow(context.Background(),
 		"INSERT INTO posts (title, content, author, allow_comments) VALUES ($1, $2, $3, $4) RETURNING id",
 		title, content, author, allowComments).Scan(&post.ID)

@@ -1,75 +1,50 @@
 package api
 
 import (
-	"OzonTask/db"
-	"OzonTask/graph/generated"
-	"OzonTask/graph/model"
-	"context"
 	"log"
+	"net/http"
 
+	"OzonTask/graph"
+	"OzonTask/graph/generated"
+
+	"github.com/99designs/gqlgen/graphql/handler"
+	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/jackc/pgx/v4"
 )
 
 type API struct {
-	Conn *pgx.Conn
-}
-
-func NewAPI(conn *pgx.Conn) *API {
-	return &API{Conn: conn}
-}
-
-type Resolver struct {
 	DB *pgx.Conn
 }
 
-func (api *API) GetResolver() *Resolver {
-	return &Resolver{DB: api.Conn}
-}
-
-func (r *Resolver) Mutation() generated.MutationResolver {
-	return &mutationResolver{r}
-}
-
-func (r *Resolver) Query() generated.QueryResolver {
-	return &queryResolver{r}
-}
-
-type mutationResolver struct{ *Resolver }
-type queryResolver struct{ *Resolver }
-
-func (r *mutationResolver) CreatePost(ctx context.Context, input model.NewPost) (*model.Post, error) {
-	post, err := db.CreatePost(r.DB, input.Title, input.Content, input.Author, input.AllowComments)
-	if err != nil {
-		log.Printf("Error creating post: %v", err)
-		return nil, err
-	}
-
-	return &model.Post{
-		ID:            post.ID,
-		Title:         post.Title,
-		Content:       post.Content,
-		Author:        post.Author,
-		AllowComments: post.AllowComments,
+func NewAPI(db *pgx.Conn) (*API, error) {
+	return &API{
+		DB: db,
 	}, nil
 }
 
-func (r *queryResolver) Posts(ctx context.Context) ([]*model.Post, error) {
-	dbPosts, err := db.GetPosts(r.DB)
-	if err != nil {
-		log.Printf("Error getting posts: %v", err)
-		return nil, err
+func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Настройка CORS
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		return
 	}
 
-	var posts []*model.Post
-	for _, p := range dbPosts {
-		posts = append(posts, &model.Post{
-			ID:            p.ID,
-			Title:         p.Title,
-			Content:       p.Content,
-			Author:        p.Author,
-			AllowComments: p.AllowComments,
-		})
-	}
+	// Создаем GraphQL сервер
+	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{
+		Resolvers: &graph.Resolver{DB: a.DB},
+	}))
 
-	return posts, nil
+	// Логируем входящие запросы
+	log.Printf("Received %s request to %s", r.Method, r.URL.Path)
+
+	// Обрабатываем запрос
+	srv.ServeHTTP(w, r)
+}
+
+func (a *API) PlaygroundHandler() http.Handler {
+	return playground.Handler("GraphQL playground", "/graphql")
 }

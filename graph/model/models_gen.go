@@ -2,17 +2,8 @@
 
 package model
 
-type NewPost struct {
-	Title         string `json:"title"`
-	Content       string `json:"content"`
-	Author        string `json:"author"`
-	AllowComments bool   `json:"allowComments"`
+type Mutation struct {
 }
 
-type Post struct {
-	ID            string `json:"id"`
-	Title         string `json:"title"`
-	Content       string `json:"content"`
-	Author        string `json:"author"`
-	AllowComments bool   `json:"allowComments"`
+type Query struct {
 }

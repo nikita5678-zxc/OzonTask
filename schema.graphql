@@ -1,0 +1,61 @@
+type Query {
+    posts: [Post!]!
+    post(id: ID!): Post
+    comments(postId: ID!, first: Int, after: String): CommentConnection!
+}
+
+type Post {
+    id: ID!
+    title: String!
+    content: String!
+    author: String!
+    allowComments: Boolean!
+    createdAt: String!
+    comments(first: Int, after: String): CommentConnection!
+}
+
+type Comment {
+    id: ID!
+    postId: ID!
+    parentId: ID
+    author: String!
+    content: String!
+    createdAt: String!
+    replies(first: Int, after: String): CommentConnection!
+}
+
+type CommentEdge {
+    node: Comment!
+    cursor: String!
+}
+
+type PageInfo {
+    hasNextPage: Boolean!
+    hasPreviousPage: Boolean!
+    startCursor: String
+    endCursor: String
+}
+
+type CommentConnection {
+    edges: [CommentEdge!]!
+    pageInfo: PageInfo!
+}
+
+input NewPost {
+    title: String!
+    content: String!
+    author: String!
+    allowComments: Boolean!
+}
+
+input NewComment {
+    postId: ID!
+    parentId: ID
+    author: String!
+    content: String!
+}
+
+type Mutation {
+    createPost(input: NewPost!): Post!
+    createComment(input: NewComment!): Comment!
+} 

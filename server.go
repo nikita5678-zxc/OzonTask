@@ -1,41 +1,43 @@
 package main
 
 import (
-	"OzonTask/api"
-	"OzonTask/db"
-	"OzonTask/graph"
-	"OzonTask/graph/generated"
 	"context"
 	"log"
 	"net/http"
-	"os"
 
-	"github.com/99designs/gqlgen/graphql/handler"
-	"github.com/99designs/gqlgen/graphql/playground"
+	"OzonTask/api"
+	"OzonTask/db"
+
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	// Загружаем переменные окружения из .env файла
+	if err := godotenv.Load(); err != nil {
+		log.Printf("Warning: .env file not found: %v", err)
+	}
+
 	conn, err := db.ConnectDB()
 	if err != nil {
-		log.Fatal("Error connecting to database:", err)
+		log.Fatalf("Failed to connect to database: %v", err)
 	}
 	defer conn.Close(context.Background())
 
-	apiHandler := api.NewAPI(conn)
-
-	port := os.Getenv("DATABASE_URL")
-	if port == "" {
-		log.Fatal("Missing DATABASE_URL")
+	if err := db.CreateSchema(conn); err != nil {
+		log.Fatalf("Failed to create schema: %v", err)
 	}
 
-	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{
-		Resolvers: &graph.Resolver{
-			Resolver: apiHandler.GetResolver(),
-		},
-	}))
+	api, err := api.NewAPI(conn)
+	if err != nil {
+		log.Fatalf("Failed to create API: %v", err)
+	}
 
-	http.Handle("/", playground.Handler("GraphQL Playground", "/query"))
-	http.Handle("/query", srv)
+	// Настраиваем маршруты
+	mux := http.NewServeMux()
+	mux.Handle("/graphql", api)
+	mux.Handle("/", api.PlaygroundHandler())
 
-	log.Printf("Server started on :7070")
+	log.Println("Server started at http://localhost:3000")
+	log.Println("GraphQL Playground available at http://localhost:3000/")
+	log.Fatal(http.ListenAndServe(":3000", mux))
 }

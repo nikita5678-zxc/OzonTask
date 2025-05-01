@@ -23,7 +23,6 @@ func NewAPI(db *pgx.Conn) (*API, error) {
 }
 
 func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// Настройка CORS
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
@@ -33,15 +32,12 @@ func (a *API) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Создаем GraphQL сервер
 	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{
 		Resolvers: &graph.Resolver{DB: a.DB},
 	}))
 
-	// Логируем входящие запросы
 	log.Printf("Received %s request to %s", r.Method, r.URL.Path)
 
-	// Обрабатываем запрос
 	srv.ServeHTTP(w, r)
 }
 

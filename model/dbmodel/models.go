@@ -7,7 +7,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// Post представляет собой пост в блоге
 type Post struct {
 	ID            uuid.UUID `json:"id"`
 	Title         string    `json:"title"`
@@ -17,7 +16,6 @@ type Post struct {
 	CreatedAt     time.Time `json:"createdAt"`
 }
 
-// NewPost представляет собой данные для создания нового поста
 type NewPost struct {
 	Title         string    `json:"title"`
 	Content       string    `json:"content"`
@@ -26,7 +24,6 @@ type NewPost struct {
 	CreatedAt     time.Time `json:"created_at"`
 }
 
-// Comment представляет собой комментарий к посту
 type Comment struct {
 	ID        uuid.UUID  `json:"id"`
 	PostID    uuid.UUID  `json:"postId"`
@@ -36,7 +33,6 @@ type Comment struct {
 	CreatedAt time.Time  `json:"createdAt"`
 }
 
-// NewComment представляет собой данные для создания нового комментария
 type NewComment struct {
 	PostID    string         `json:"post_id"`
 	ParentID  sql.NullString `json:"parent_id"`

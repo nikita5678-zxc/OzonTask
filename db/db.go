@@ -13,15 +13,12 @@ import (
 	"github.com/jackc/pgx/v4"
 )
 
-// ConnectDB подключается к базе данных PostgreSQL
 func ConnectDB() (*pgx.Conn, error) {
-	// Получаем строку подключения из переменной окружения
 	connStr := os.Getenv("DATABASE_URL")
 	if connStr == "" {
 		return nil, fmt.Errorf("DATABASE_URL environment variable is not set")
 	}
 
-	// Добавляем sslmode=disable, если его нет
 	if !strings.Contains(connStr, "sslmode=") {
 		if strings.Contains(connStr, "?") {
 			connStr += "&sslmode=disable"
@@ -30,13 +27,11 @@ func ConnectDB() (*pgx.Conn, error) {
 		}
 	}
 
-	// Подключаемся к базе данных
 	conn, err := pgx.Connect(context.Background(), connStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %v", err)
 	}
 
-	// Проверяем подключение
 	if err := conn.Ping(context.Background()); err != nil {
 		return nil, fmt.Errorf("failed to ping database: %v", err)
 	}

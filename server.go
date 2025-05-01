@@ -12,7 +12,6 @@ import (
 )
 
 func main() {
-	// Загружаем переменные окружения из .env файла
 	if err := godotenv.Load(); err != nil {
 		log.Printf("Warning: .env file not found: %v", err)
 	}
@@ -32,7 +31,6 @@ func main() {
 		log.Fatalf("Failed to create API: %v", err)
 	}
 
-	// Настраиваем маршруты
 	mux := http.NewServeMux()
 	mux.Handle("/graphql", api)
 	mux.Handle("/", api.PlaygroundHandler())

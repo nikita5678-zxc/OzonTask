@@ -17,37 +17,30 @@ import (
 	"github.com/google/uuid"
 )
 
-// ID is the resolver for the id field.
 func (r *commentResolver) ID(ctx context.Context, obj *model.Comment) (string, error) {
 	panic(fmt.Errorf("not implemented: ID - id"))
 }
 
-// PostID is the resolver for the postId field.
 func (r *commentResolver) PostID(ctx context.Context, obj *model.Comment) (string, error) {
 	panic(fmt.Errorf("not implemented: PostID - postId"))
 }
 
-// ParentID is the resolver for the parentId field.
 func (r *commentResolver) ParentID(ctx context.Context, obj *model.Comment) (*string, error) {
 	panic(fmt.Errorf("not implemented: ParentID - parentId"))
 }
 
-// CreatedAt is the resolver for the createdAt field.
 func (r *commentResolver) CreatedAt(ctx context.Context, obj *model.Comment) (string, error) {
 	panic(fmt.Errorf("not implemented: CreatedAt - createdAt"))
 }
 
-// Replies is the resolver for the replies field.
 func (r *commentResolver) Replies(ctx context.Context, obj *model.Comment, first *int, after *string) (*model.CommentsConnection, error) {
 	panic(fmt.Errorf("not implemented: Replies - replies"))
 }
 
-// Cursor is the resolver for the cursor field.
 func (r *commentEdgeResolver) Cursor(ctx context.Context, obj *model.CommentEdge) (string, error) {
 	panic(fmt.Errorf("not implemented: Cursor - cursor"))
 }
 
-// CreatePost is the resolver for the createPost field.
 func (r *mutationResolver) CreatePost(ctx context.Context, input model.NewPost) (*model.Post, error) {
 	post := &model.Post{
 		ID:            uuid.New(),
@@ -75,7 +68,6 @@ func (r *mutationResolver) CreatePost(ctx context.Context, input model.NewPost) 
 	return post, nil
 }
 
-// CreateComment is the resolver for the createComment field.
 func (r *mutationResolver) CreateComment(ctx context.Context, input model.NewComment) (*model.Comment, error) {
 	postID, err := uuid.Parse(input.PostID)
 	if err != nil {
@@ -117,27 +109,22 @@ func (r *mutationResolver) CreateComment(ctx context.Context, input model.NewCom
 	return comment, nil
 }
 
-// HasPreviousPage is the resolver for the hasPreviousPage field.
 func (r *pageInfoResolver) HasPreviousPage(ctx context.Context, obj *model.PageInfo) (bool, error) {
 	panic(fmt.Errorf("not implemented: HasPreviousPage - hasPreviousPage"))
 }
 
-// StartCursor is the resolver for the startCursor field.
 func (r *pageInfoResolver) StartCursor(ctx context.Context, obj *model.PageInfo) (*string, error) {
 	panic(fmt.Errorf("not implemented: StartCursor - startCursor"))
 }
 
-// ID is the resolver for the id field.
 func (r *postResolver) ID(ctx context.Context, obj *model.Post) (string, error) {
 	panic(fmt.Errorf("not implemented: ID - id"))
 }
 
-// CreatedAt is the resolver for the createdAt field.
 func (r *postResolver) CreatedAt(ctx context.Context, obj *model.Post) (string, error) {
 	panic(fmt.Errorf("not implemented: CreatedAt - createdAt"))
 }
 
-// Comments is the resolver for the comments field.
 func (r *postResolver) Comments(ctx context.Context, obj *model.Post, first *int, after *string) (*model.CommentsConnection, error) {
 	limit := 10
 	if first != nil {
@@ -188,7 +175,6 @@ func (r *postResolver) Comments(ctx context.Context, obj *model.Post, first *int
 	}, nil
 }
 
-// Posts is the resolver for the posts field.
 func (r *queryResolver) Posts(ctx context.Context) ([]*model.Post, error) {
 	posts, err := db.GetPosts(r.DB)
 	if err != nil {
@@ -209,7 +195,6 @@ func (r *queryResolver) Posts(ctx context.Context) ([]*model.Post, error) {
 	return result, nil
 }
 
-// Post is the resolver for the post field.
 func (r *queryResolver) Post(ctx context.Context, id string) (*model.Post, error) {
 	postID, err := uuid.Parse(id)
 	if err != nil {
@@ -231,7 +216,6 @@ func (r *queryResolver) Post(ctx context.Context, id string) (*model.Post, error
 	}, nil
 }
 
-// Comments is the resolver for the comments field.
 func (r *queryResolver) Comments(ctx context.Context, postID string, first *int, after *string) (*model.CommentsConnection, error) {
 	parsedPostID, err := uuid.Parse(postID)
 	if err != nil {
@@ -287,35 +271,26 @@ func (r *queryResolver) Comments(ctx context.Context, postID string, first *int,
 	}, nil
 }
 
-// PostID is the resolver for the postId field.
 func (r *newCommentResolver) PostID(ctx context.Context, obj *model.NewComment, data string) error {
 	panic(fmt.Errorf("not implemented: PostID - postId"))
 }
 
-// ParentID is the resolver for the parentId field.
 func (r *newCommentResolver) ParentID(ctx context.Context, obj *model.NewComment, data *string) error {
 	panic(fmt.Errorf("not implemented: ParentID - parentId"))
 }
 
-// Comment returns generated.CommentResolver implementation.
 func (r *Resolver) Comment() generated.CommentResolver { return &commentResolver{r} }
 
-// CommentEdge returns generated.CommentEdgeResolver implementation.
 func (r *Resolver) CommentEdge() generated.CommentEdgeResolver { return &commentEdgeResolver{r} }
 
-// Mutation returns generated.MutationResolver implementation.
 func (r *Resolver) Mutation() generated.MutationResolver { return &mutationResolver{r} }
 
-// PageInfo returns generated.PageInfoResolver implementation.
 func (r *Resolver) PageInfo() generated.PageInfoResolver { return &pageInfoResolver{r} }
 
-// Post returns generated.PostResolver implementation.
 func (r *Resolver) Post() generated.PostResolver { return &postResolver{r} }
 
-// Query returns generated.QueryResolver implementation.
 func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
 
-// NewComment returns generated.NewCommentResolver implementation.
 func (r *Resolver) NewComment() generated.NewCommentResolver { return &newCommentResolver{r} }
 
 type commentResolver struct{ *Resolver }

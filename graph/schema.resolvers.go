@@ -18,27 +18,78 @@ import (
 )
 
 func (r *commentResolver) ID(ctx context.Context, obj *model.Comment) (string, error) {
-	panic(fmt.Errorf("not implemented: ID - id"))
+	return obj.ID.String(), nil
 }
 
 func (r *commentResolver) PostID(ctx context.Context, obj *model.Comment) (string, error) {
-	panic(fmt.Errorf("not implemented: PostID - postId"))
+	return obj.PostID.String(), nil
 }
 
 func (r *commentResolver) ParentID(ctx context.Context, obj *model.Comment) (*string, error) {
-	panic(fmt.Errorf("not implemented: ParentID - parentId"))
+	if obj.ParentID == nil {
+		return nil, nil
+	}
+	parentStr := obj.ParentID.String()
+	return &parentStr, nil
 }
 
 func (r *commentResolver) CreatedAt(ctx context.Context, obj *model.Comment) (string, error) {
-	panic(fmt.Errorf("not implemented: CreatedAt - createdAt"))
+	return obj.CreatedAt, nil
 }
 
 func (r *commentResolver) Replies(ctx context.Context, obj *model.Comment, first *int, after *string) (*model.CommentsConnection, error) {
-	panic(fmt.Errorf("not implemented: Replies - replies"))
+	limit := 10
+	if first != nil {
+		limit = *first
+	}
+	cursor := ""
+	if after != nil {
+		cursor = *after
+	}
+
+	replies, err := db.GetCommentReplies(r.DB, obj.ID, limit, cursor)
+	if err != nil {
+		return nil, err
+	}
+
+	edges := make([]*model.CommentEdge, len(replies))
+	for i, reply := range replies {
+		edges[i] = &model.CommentEdge{
+			Node: &model.Comment{
+				ID:        reply.ID,
+				PostID:    reply.PostID,
+				ParentID:  reply.ParentID,
+				Author:    reply.Author,
+				Content:   reply.Content,
+				CreatedAt: reply.CreatedAt.Format(time.RFC3339),
+			},
+			Cursor: reply.ID.String(),
+		}
+	}
+
+	var startCursor, endCursor *string
+	if len(edges) > 0 {
+		start := edges[0].Cursor
+		end := edges[len(edges)-1].Cursor
+		startCursor = &start
+		endCursor = &end
+	}
+
+	return &model.CommentsConnection{
+		Edges: edges,
+		PageInfo: &model.PageInfo{
+			HasNextPage:     len(replies) == limit,
+			HasPreviousPage: cursor != "",
+			StartCursor:     startCursor,
+			EndCursor:       endCursor,
+		},
+	}, nil
 }
 
 func (r *commentEdgeResolver) Cursor(ctx context.Context, obj *model.CommentEdge) (string, error) {
-	panic(fmt.Errorf("not implemented: Cursor - cursor"))
+	cursor := obj.Node.ID.String()
+
+	return cursor, nil
 }
 
 func (r *mutationResolver) CreatePost(ctx context.Context, input model.NewPost) (*model.Post, error) {
@@ -272,11 +323,13 @@ func (r *queryResolver) Comments(ctx context.Context, postID string, first *int,
 }
 
 func (r *newCommentResolver) PostID(ctx context.Context, obj *model.NewComment, data string) error {
-	panic(fmt.Errorf("not implemented: PostID - postId"))
+	obj.PostID = data
+	return nil
 }
 
 func (r *newCommentResolver) ParentID(ctx context.Context, obj *model.NewComment, data *string) error {
-	panic(fmt.Errorf("not implemented: ParentID - parentId"))
+	obj.ParentID = data
+	return nil
 }
 
 func (r *Resolver) Comment() generated.CommentResolver { return &commentResolver{r} }

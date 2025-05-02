@@ -141,3 +141,29 @@ func CreateComment(conn *pgx.Conn, comment *dbmodel.Comment) error {
 	`, comment.ID, comment.PostID, comment.ParentID, comment.Author, comment.Content, comment.CreatedAt)
 	return err
 }
+
+func GetCommentReplies(db *pgx.Conn, parentID uuid.UUID, limit int, cursor string) ([]*dbmodel.Comment, error) {
+	query := `
+		SELECT id, post_id, parent_id, author, content, created_at
+		FROM comments
+		WHERE parent_id = $1 AND id > $2
+		ORDER BY id
+		LIMIT $3
+	`
+	rows, err := db.Query(context.Background(), query, parentID, cursor, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var comments []*dbmodel.Comment
+	for rows.Next() {
+		var c dbmodel.Comment
+		err := rows.Scan(&c.ID, &c.PostID, &c.ParentID, &c.Author, &c.Content, &c.CreatedAt)
+		if err != nil {
+			return nil, err
+		}
+		comments = append(comments, &c)
+	}
+	return comments, nil
+}

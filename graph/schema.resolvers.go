@@ -161,19 +161,24 @@ func (r *mutationResolver) CreateComment(ctx context.Context, input model.NewCom
 }
 
 func (r *pageInfoResolver) HasPreviousPage(ctx context.Context, obj *model.PageInfo) (bool, error) {
-	panic(fmt.Errorf("not implemented: HasPreviousPage - hasPreviousPage"))
+	return obj.StartCursor != nil && *obj.StartCursor != "", nil
 }
 
 func (r *pageInfoResolver) StartCursor(ctx context.Context, obj *model.PageInfo) (*string, error) {
-	panic(fmt.Errorf("not implemented: StartCursor - startCursor"))
+	return obj.StartCursor, nil
 }
 
 func (r *postResolver) ID(ctx context.Context, obj *model.Post) (string, error) {
-	panic(fmt.Errorf("not implemented: ID - id"))
+	return obj.ID.String(), nil
 }
 
 func (r *postResolver) CreatedAt(ctx context.Context, obj *model.Post) (string, error) {
-	panic(fmt.Errorf("not implemented: CreatedAt - createdAt"))
+	createdAt, err := time.Parse(time.RFC3339, obj.CreatedAt)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse createdAt: %v", err)
+	}
+
+	return createdAt.Format(time.RFC3339), nil
 }
 
 func (r *postResolver) Comments(ctx context.Context, obj *model.Post, first *int, after *string) (*model.CommentsConnection, error) {

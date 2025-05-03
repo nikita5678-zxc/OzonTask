@@ -102,10 +102,10 @@ func CreatePost(conn *pgx.Conn, post *dbmodel.Post) error {
 
 func GetComments(conn *pgx.Conn, postID uuid.UUID, limit int, after string) ([]*dbmodel.Comment, error) {
 	query := `
-		SELECT id, post_id, parent_id, author, content, created_at
-		FROM comments
-		WHERE post_id = $1
-	`
+			SELECT id, post_id, parent_id, author, content, created_at
+			FROM comments
+			WHERE post_id = $1
+		`
 	args := []interface{}{postID}
 
 	if after != "" {

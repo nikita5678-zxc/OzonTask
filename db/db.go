@@ -1,71 +1,169 @@
 package db
 
 import (
-	"OzonTask/models"
 	"context"
-	"github.com/jackc/pgx/v4"
-	"github.com/joho/godotenv"
+	"fmt"
 	"log"
 	"os"
+	"strings"
+
+	"OzonTask/model/dbmodel"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v4"
 )
 
 func ConnectDB() (*pgx.Conn, error) {
-	err := godotenv.Load()
+	connStr := os.Getenv("DATABASE_URL")
+	if connStr == "" {
+		return nil, fmt.Errorf("DATABASE_URL environment variable is not set")
+	}
+
+	if !strings.Contains(connStr, "sslmode=") {
+		if strings.Contains(connStr, "?") {
+			connStr += "&sslmode=disable"
+		} else {
+			connStr += "?sslmode=disable"
+		}
+	}
+
+	conn, err := pgx.Connect(context.Background(), connStr)
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		return nil, fmt.Errorf("failed to connect to database: %v", err)
 	}
 
-	databaseUrl := os.Getenv("DATABASE_URL")
-	if databaseUrl == "" {
-		log.Fatal("DATABASE_URL environment variable not set")
+	if err := conn.Ping(context.Background()); err != nil {
+		return nil, fmt.Errorf("failed to ping database: %v", err)
 	}
 
-	conn, err := pgx.Connect(context.Background(), databaseUrl)
-	if err != nil {
-		log.Fatalf("Unable to connect to database: %v\n", err)
-		os.Exit(1)
-	}
-
+	log.Println("Successfully connected to database")
 	return conn, nil
 }
 
-func GetPosts(conn *pgx.Conn) ([]models.Post, error) {
-	rows, err := conn.Query(context.Background(), "SELECT id, title, content, author, allow_comments FROM posts")
+func CreateSchema(conn *pgx.Conn) error {
+	_, err := conn.Exec(context.Background(), `
+		CREATE TABLE IF NOT EXISTS posts (
+			id UUID PRIMARY KEY,
+			title TEXT NOT NULL,
+			content TEXT NOT NULL,
+			author TEXT NOT NULL,
+			allow_comments BOOLEAN NOT NULL DEFAULT true,
+			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		);
+
+		CREATE TABLE IF NOT EXISTS comments (
+			id UUID PRIMARY KEY,
+			post_id UUID NOT NULL REFERENCES posts(id),
+			parent_id UUID REFERENCES comments(id),
+			author TEXT NOT NULL,
+			content TEXT NOT NULL,
+			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		);
+	`)
+	return err
+}
+
+func GetPosts(conn *pgx.Conn) ([]*dbmodel.Post, error) {
+	rows, err := conn.Query(context.Background(), "SELECT * FROM posts ORDER BY created_at DESC")
 	if err != nil {
-		log.Println("Error querying posts:", err)
 		return nil, err
 	}
 	defer rows.Close()
 
-	var posts []models.Post
+	var posts []*dbmodel.Post
 	for rows.Next() {
-		var post models.Post
-		err := rows.Scan(&post.ID, &post.Title, &post.Content, &post.Author, &post.AllowComments)
+		post := &dbmodel.Post{}
+		err := rows.Scan(&post.ID, &post.Title, &post.Content, &post.Author, &post.AllowComments, &post.CreatedAt)
 		if err != nil {
-			log.Println("Error scanning row:", err)
 			return nil, err
 		}
 		posts = append(posts, post)
 	}
-	if rows.Err() != nil {
-		log.Println("Error reading rows:", rows.Err())
-		return nil, rows.Err()
-	}
 	return posts, nil
 }
 
-func CreatePost(conn *pgx.Conn, title, content, author string, allowComments bool) (models.Post, error) {
-	var post models.Post
-	err := conn.QueryRow(context.Background(),
-		"INSERT INTO posts (title, content, author, allow_comments) VALUES ($1, $2, $3, $4) RETURNING id",
-		title, content, author, allowComments).Scan(&post.ID)
+func GetPost(conn *pgx.Conn, id uuid.UUID) (*dbmodel.Post, error) {
+	post := &dbmodel.Post{}
+	err := conn.QueryRow(context.Background(), "SELECT * FROM posts WHERE id = $1", id).
+		Scan(&post.ID, &post.Title, &post.Content, &post.Author, &post.AllowComments, &post.CreatedAt)
 	if err != nil {
-		log.Println("Error inserting post:", err)
-		return post, err
+		return nil, err
 	}
-	post.Title = title
-	post.Content = content
-	post.Author = author
-	post.AllowComments = allowComments
 	return post, nil
+}
+
+func CreatePost(conn *pgx.Conn, post *dbmodel.Post) error {
+	_, err := conn.Exec(context.Background(), `
+		INSERT INTO posts (id, title, content, author, allow_comments, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6)
+	`, post.ID, post.Title, post.Content, post.Author, post.AllowComments, post.CreatedAt)
+	return err
+}
+
+func GetComments(conn *pgx.Conn, postID uuid.UUID, limit int, after string) ([]*dbmodel.Comment, error) {
+	query := `
+			SELECT id, post_id, parent_id, author, content, created_at
+			FROM comments
+			WHERE post_id = $1
+		`
+	args := []interface{}{postID}
+
+	if after != "" {
+		query += " AND created_at > (SELECT created_at FROM comments WHERE id = $2)"
+		args = append(args, after)
+	}
+
+	query += " ORDER BY created_at ASC LIMIT $3"
+	args = append(args, limit)
+
+	rows, err := conn.Query(context.Background(), query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var comments []*dbmodel.Comment
+	for rows.Next() {
+		comment := &dbmodel.Comment{}
+		err := rows.Scan(&comment.ID, &comment.PostID, &comment.ParentID, &comment.Author, &comment.Content, &comment.CreatedAt)
+		if err != nil {
+			return nil, err
+		}
+		comments = append(comments, comment)
+	}
+	return comments, nil
+}
+
+func CreateComment(conn *pgx.Conn, comment *dbmodel.Comment) error {
+	_, err := conn.Exec(context.Background(), `
+		INSERT INTO comments (id, post_id, parent_id, author, content, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6)
+	`, comment.ID, comment.PostID, comment.ParentID, comment.Author, comment.Content, comment.CreatedAt)
+	return err
+}
+
+func GetCommentReplies(db *pgx.Conn, parentID uuid.UUID, limit int, cursor string) ([]*dbmodel.Comment, error) {
+	query := `
+		SELECT id, post_id, parent_id, author, content, created_at
+		FROM comments
+		WHERE parent_id = $1 AND id > $2
+		ORDER BY id
+		LIMIT $3
+	`
+	rows, err := db.Query(context.Background(), query, parentID, cursor, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var comments []*dbmodel.Comment
+	for rows.Next() {
+		var c dbmodel.Comment
+		err := rows.Scan(&c.ID, &c.PostID, &c.ParentID, &c.Author, &c.Content, &c.CreatedAt)
+		if err != nil {
+			return nil, err
+		}
+		comments = append(comments, &c)
+	}
+	return comments, nil
 }

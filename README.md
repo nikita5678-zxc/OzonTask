@@ -58,14 +58,8 @@ go run main.go
 
 ### Запуск через Docker
 
-1. Соберите Docker образ:
 ```bash
-docker build -t ozontask .
-```
-
-2. Запустите контейнер:
-```bash
-docker run -p 3000:3000 ozontask
+docker-compose up --build
 ```
 
 ## Использование
